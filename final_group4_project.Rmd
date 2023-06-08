@@ -594,7 +594,7 @@ cost <- xgb_preds %>%
 cost <- cost %>%
   
   # naive false-- we think every single transaction is ok and not fraud
-  mutate(naive_false = ifelse(is_fraud == 1, amt, 0)) %>% 
+  mutate(false_naive = ifelse(is_fraud == 1, amt, 0)) %>% 
 
   # false negatives-- we thought they were not fraud, but they were
   mutate(false_negatives = ifelse(pred == 0 & is_fraud == 1, amt, 0)) %>% 
@@ -606,7 +606,7 @@ cost <- cost %>%
   mutate(true_positives = ifelse(pred == 1 & is_fraud == 1, amt, 0)) %>% 
 
   # true negatives-- we thought they were ok, and they were 
-  mutate(true_positives = ifelse(pred == 0 & is_fraud == 0, amt, 0))
+  mutate(true_negatives = ifelse(pred == 0 & is_fraud == 0, amt, 0))
 
   
 # Summarising
