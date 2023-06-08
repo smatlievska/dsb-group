@@ -1,6 +1,6 @@
 ---
 title: "Final Group project"
-author: "Your name goes here"
+author: "Sandra, Shash, Nikita, Patrick"
 date: "`r Sys.Date()`"
 output:
   html_document:
