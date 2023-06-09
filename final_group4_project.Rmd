@@ -309,61 +309,49 @@ card_fraud %>%
 
 ```
 
-There is clearly a large discrepancy between certain types of merchant category and customer job in this data set. Let us combine the smallest represented categories of these into "Other" and convert the string variables to factors. This is much more useful for machine learning purposes and will enhance the predictive performance of our model:
-
-The predictors `category` and `job` are transformed into factors.
+There is clearly a large discrepancy between certain types of merchant category and customer job in this data set. Let us combine the smallest represented categories of these into "Other" and convert the string variables to factors. This is much more useful for machine learning purposes and will enhance the predictive performance of our model: we will do the category combining in our recipe to follow later:
 
 ```{r convert-strings-to-factors}
 
+# convert the two string variables to factors 
 card_fraud <- card_fraud %>% 
   mutate(category = factor(category),
          job = factor(job))
 
 ```
 
-`category` has 14 unique values, and `job` has 494 unique values. The dataset is quite large, with over 670K records, so these variables don't have an excessive number of levels at first glance. However, it is worth seeing if we can compact the levels to a smaller number.
+## Fit workflows on smaller data sample
 
-### Why do we care about the number of categories and whether they are "excessive"?
+This data set has 670K rows and trying various models may break things...
 
-Consider the extreme case where a dataset had categories that only contained one record each. There is simply insufficient data to make correct predictions using category as a predictor on new data with that category label. Additionally, if your modeling uses dummy variables, having an extremely large number of categories will lead to the production of a huge number of predictors, which can slow down the fitting. This is fine if all the predictors are useful, but if they aren't useful (as in the case of having only one record for a category), trimming them will improve the speed and quality of the data fitting.
+Thus, we will work with a smaller sample of 10% of the values the original data set to identify the best model, and once we have the best model we can use the full data set to train and test our best model.
 
-If I had subject matter expertise, I could manually combine categories. If you don't have subject matter expertise, or if performing this task would be too labor intensive, then you can use cutoffs based on the amount of data in a category. If the majority of the data exists in only a few categories, then it might be reasonable to keep those categories and lump everything else in an "other" category or perhaps even drop the data points in smaller categories.
-
-## Do all variables have sensible types?
-
-Consider each variable and decide whether to keep, transform, or drop it. This is a mixture of Exploratory Data Analysis and Feature Engineering, but it's helpful to do some simple feature engineering as you explore the data. In this project, we have all data to begin with, so any transformations will be performed on the entire dataset. Ideally, do the transformations as a `recipe_step()` in the tidymodels framework. Then the transformations would be applied to any data the recipe was used on as part of the modeling workflow. There is less chance of data leakage or missing a step when you perform the feature engineering in the recipe.
-
-## Which variables to keep in your model?
-
-You have a number of variables and you have to decide which ones to use in your model. For instance, you have the latitude/lognitude of the customer, that of the merchant, the same data in radians, as well as the `distance_km` and `distance_miles`. Do you need them all?
-
-## Fit your workflows in smaller sample
-
-You will be running a series of different models, along the lines of the California housing example we have seen in class. However, this dataset has 670K rows and if you try various models and run cross validation on them, your computer may slow down or crash.
-
-Thus, we will work with a smaller sample of 10% of the values the original dataset to identify the best model, and once we have the best model we can use the full dataset to train- test our best model.
-
-```{r}
+```{r smaller-subset}
 
 # select a smaller subset
 my_card_fraud <- card_fraud %>% 
-  # select a smaller subset, 10% of the entire dataframe 
+  
+# select a smaller subset, 10% of the entire dataframe 
   slice_sample(prop = 0.10) %>% 
+  
+# pick our variables of interest 
   select(category, amt, distance_miles, city_pop, hour, wday, month_name, age, is_fraud)
 
 ```
 
 ## Split the data in training - testing
 
-```{r}
-# **Split the data**
+```{r split-data}
 
 set.seed(123)
 
-data_split <- initial_split(my_card_fraud, # updated data
+# split our smaller data set 80% training, 20% testing
+# with equal proportions of fraud transactions in each set 
+data_split <- initial_split(my_card_fraud, 
                            prop = 0.8, 
                            strata = is_fraud)
 
+# split the data 
 card_fraud_train <- training(data_split) 
 card_fraud_test <- testing(data_split)
 
@@ -371,13 +359,16 @@ card_fraud_test <- testing(data_split)
 
 ## Cross Validation
 
-Start with 3 CV folds to quickly get an estimate for the best model and you can increase the number of folds to 5 or 10 later.
+We will use 5 folds for cross validation:
 
-```{r}
+```{r cross-validation, message=FALSE}
 
 set.seed(123)
+
+# 5-fold validation for training data 
+# equal proportion of fraud transactions in each fold 
 cv_folds <- vfold_cv(data = card_fraud_train, 
-                          v = 3, 
+                          v = 5, 
                           strata = is_fraud)
 cv_folds 
 
