@@ -359,40 +359,57 @@ card_fraud_test <- testing(data_split)
 
 ## Cross Validation
 
-We will use 5 folds for cross validation:
+We will use 3 folds for cross validation:
 
 ```{r cross-validation, message=FALSE}
 
 set.seed(123)
 
-# 5-fold validation for training data 
+# 3-fold validation for training data 
 # equal proportion of fraud transactions in each fold 
 cv_folds <- vfold_cv(data = card_fraud_train, 
-                          v = 5, 
+                          v = 3, 
                           strata = is_fraud)
 cv_folds 
 
 ```
 
-## Define a tidymodels `recipe`
+## Define a recipe
 
-What steps are you going to add to your recipe? Do you need to do any log transformations?
+We define our pre-processor recipes steps below:
 
 ```{r, define_recipe}
 
+# predict fraud transaction for training data with following recipe 
 fraud_rec <- recipe(is_fraud ~ ., data = card_fraud_train) %>%
+  
+# Categories with less than 5% will be in a category 'Other'
+    
+  step_other(category, threshold = .05) %>% 
+
+# log amounts data becuase this is very disperse 
   step_log(amt) %>% 
+
+# skip all NA's 
   step_naomit(everything(), skip = TRUE) %>% 
+    
+# deal with variables not encountered in training data 
   step_novel(all_nominal(), -all_outcomes()) %>%
-  step_normalize(all_numeric(), -all_outcomes()) %>% 
+    
+# Convert nominal data into numeric dummy variables
   step_dummy(all_nominal(), -all_outcomes()) %>%
-  step_zv(all_numeric(), -all_outcomes()) 
+    
+# deal with numeric variables that contain only a single value
+  step_zv(all_numeric(), -all_outcomes()) %>% 
+  
+# center and scale all numeric variables 
+  step_normalize(all_numeric(), -all_outcomes())
 
 ```
 
-Once you have your recipe, you can check the pre-processed dataframe
+Check the pre-processed data frame :
 
-```{r}
+```{r check-data-frame}
 
 prepped_data <- 
   fraud_rec %>% # use the recipe object
@@ -405,16 +422,15 @@ glimpse(prepped_data)
 
 ## Define various models
 
-You should define the following classification models:
+We define the following classification models:
 
 1.  Logistic regression, using the `glm` engine
 2.  Decision tree, using the `C5.0` engine
-3.  Random Forest, using the `ranger` engine and setting `importance = "impurity"`)\
+3.  Random Forest, using the `ranger` engine and setting `importance = "impurity"`)
 4.  A boosted tree using Extreme Gradient Boosting, and the `xgboost` engine
 5.  A k-nearest neighbours, using 4 nearest_neighbors and the `kknn` engine
 
-```{r, define_models}
-## Model Building
+```{r, define_models, message=FALSE}
 
 # 1. Pick a `model type`
 # 2. set the `engine`
@@ -425,7 +441,7 @@ log_spec <-  logistic_reg() %>%  # model type
   set_engine(engine = "glm") %>%  # model engine
   set_mode("classification") # model mode
 
-# Show your model specification
+# Show  model specification
 log_spec
 
 # Decision Tree
@@ -454,7 +470,7 @@ xgb_spec <-
 
 # K-nearest neighbour (k-NN)
 knn_spec <- 
-  nearest_neighbor(neighbors = 4) %>% # we can adjust the number of neighbors 
+  nearest_neighbor(neighbors = 4) %>% 
   set_engine("kknn") %>% 
   set_mode("classification") 
 
@@ -500,9 +516,9 @@ knn_wflow <-
 
 ## Fit models
 
-You may want to compare the time it takes to fit each model. `tic()` starts a simple timer and `toc()` stops it
-
 ```{r, fit_models}
+
+# fit all 5 models and use tic to compare the times they take to run 
 
 tic()
 log_res <- log_wflow %>% 
@@ -574,7 +590,7 @@ log_metrics <-
   mutate(model = "Logistic Regression",
          time = log_time)
 
-# add mode models here
+
 tree_metrics <- 
   tree_res %>% 
   collect_metrics(summarise = TRUE) %>%
