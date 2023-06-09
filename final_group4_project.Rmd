@@ -767,23 +767,25 @@ An excellent confusion matrix and a near perfect ROC curve. This is a very good 
 
 ## Calculating the cost of fraud to the company
 
--   How much money (in US\$ terms) are fraudulent transactions costing the company? Generate a table that summarizes the total amount of legitimate and fraudulent transactions per year and calculate the % of fraudulent transactions, in US\$ terms. Compare your model vs the naive classification that we do not have any fraudulent transactions.
+-   How much money (in US\$ terms) are fraudulent transactions costing the company? Generate a table that summarizes the total amount of legitimate and fraudulent transactions per year and calculate the % of fraudulent transactions, in US\$ terms.
 
-```{r}
-#| label: savings-for-cc-company
+```{r savings-for-cc-company}
 
+# use xgb workflow to get predictions
 xgb_preds <- 
   xgb_wflow %>% 
   fit(data = card_fraud_train) %>%  
   
-  ## Use `augment()` to get predictions for entire data set
+# Use `augment()` to get predictions for entire data set
   augment(new_data = card_fraud)
 
+# confusion matrix
 xgb_preds %>% 
   conf_mat(truth = is_fraud, estimate = .pred_class)
 
+# select only transaction amunt and fraud predictions 
 cost <- xgb_preds %>%
-  select(is_fraud, amt, pred = .pred_class) 
+  select(is_fraud,year, amt, pred = .pred_class) 
 
 cost <- cost %>%
   
@@ -806,17 +808,34 @@ cost <- cost %>%
 # Summarising
 
 cost_summary <- cost %>% 
-  summarise(across(starts_with(c("false","true", "amt")), 
+  summarise(across(starts_with(c("false","true")), 
             ~ sum(.x, na.rm = TRUE)))
 
 cost_summary
 
+
+# how much money are fraudulent transactions costing the company?
+# group transactions by year and fraud status
+cost %>% 
+  group_by(year, is_fraud) %>%
+  
+# calculate total dollar amount for each fraud group and year 
+  summarize(total_amount_dollars = sum(amt)) %>% 
+  
+# calculate percentage of total amount for each fraud group 
+  mutate(percentage_dollars = 
+           total_amount_dollars/sum(total_amount_dollars)*100)  
+
 ```
 
--   If we use a naive classifier thinking that all transactions are legitimate and not fraudulent, the cost to the company is `r scales::dollar(cost_summary$false_naives)`.
+-   Compare your model vs the naive classification that we do not have any fraudulent transactions. The \$ improvement of our model over the naive policy equals `cost_summary$false_naive - cost_summary$false_negatives - cost_summary$false_positives * 0.02)`
 
--   With our best model, the total cost of false negatives, namely transactions our classifier thinks are legitimate but which turned out to be fraud, is `r scales::dollar(cost_summary$false_negatives)`.
+    |             |
+    |------------:|
+    | = \$1670262 |
 
--   Our classifier also has some false positives, `r scales::dollar(cost_summary$false_positives)`, namely flagging transactions as fraudulent, but which were legitimate. Assuming the card company makes around 2% for each transaction (source: <https://startups.co.uk/payment-processing/credit-card-processing-fees/>), the amount of money lost due to these false positives is `r scales::dollar(cost_summary$false_positives * 0.02)`
+```{r improvement-of-model}
 
--   The \$ improvement over the naive policy is `r scales::dollar(cost_summary$false_naives - cost_summary$false_negatives - cost_summary$false_positives * 0.02)`.
+cost_summary %>% 
+  summarise(improvment_dollars = false_naive - false_negatives - 0.02*false_positives)
+```
