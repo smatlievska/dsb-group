@@ -480,33 +480,40 @@ knn_spec <-
 
 ```{r, define_workflows}
 
-## Bundle recipe and model with `workflows`
+# Bundle recipe and model into workflows 
 
+# Logistic regression
 log_wflow <- # new workflow object
  workflow() %>% # use workflow function
- add_recipe(fraud_rec) %>%   # use the new recipe
- add_model(log_spec)   # add your model spec
+ add_recipe(fraud_rec) %>%   # add recipe
+ add_model(log_spec)   # add model spec
 
 # show object
 log_wflow
 
-## A few more workflows
 
+# Decision Tree
 tree_wflow <-
  workflow() %>%
  add_recipe(fraud_rec) %>% 
  add_model(tree_spec) 
 
+
+# Random Forest
 rf_wflow <-
  workflow() %>%
  add_recipe(fraud_rec) %>% 
  add_model(rf_spec) 
 
+
+# Boosted tree (XGBoost)
 xgb_wflow <-
  workflow() %>%
  add_recipe(fraud_rec) %>% 
  add_model(xgb_spec)
 
+
+# K-nearest neighbour (k-NN)
 knn_wflow <-
  workflow() %>%
  add_recipe(fraud_rec) %>% 
@@ -519,7 +526,10 @@ knn_wflow <-
 ```{r, fit_models}
 
 # fit all 5 models and use tic to compare the times they take to run 
+# resample using our 3 folds 
+# collect model performance metrics 
 
+# Logistic regression
 tic()
 log_res <- log_wflow %>% 
   fit_resamples(
@@ -531,6 +541,8 @@ log_res <- log_wflow %>%
 time_log <- toc()
 log_time <- time_log[[4]]
 
+
+# Decision Tree
 tic()
 tree_res <- tree_wflow %>% 
   fit_resamples(
@@ -542,6 +554,8 @@ tree_res <- tree_wflow %>%
 time_tree <- toc()
 tree_time <- time_tree[[4]]
 
+
+# Random Forest
 tic()
 rf_res <- rf_wflow %>% 
   fit_resamples(
@@ -553,6 +567,8 @@ rf_res <- rf_wflow %>%
 time_rf <- toc()
 rf_time <- time_rf[[4]]
 
+
+# Boosted tree (XGBoost)
 tic()
 xgb_res <- xgb_wflow %>% 
   fit_resamples(
@@ -564,6 +580,8 @@ xgb_res <- xgb_wflow %>%
 time_xgb <- toc()
 xgb_time <- time_xgb[[4]]
 
+
+# K-nearest neighbour (k-NN)
 tic()
 knn_res <- knn_wflow %>% 
   fit_resamples(
@@ -581,7 +599,7 @@ knn_time <- time_knn[[4]]
 
 ```{r, compare_models}
 
-## Model Comparison
+# Model Comparison
 
 log_metrics <- 
   log_res %>% 
@@ -589,7 +607,6 @@ log_metrics <-
   # add the name of the model to every row
   mutate(model = "Logistic Regression",
          time = log_time)
-
 
 tree_metrics <- 
   tree_res %>% 
@@ -615,6 +632,7 @@ knn_metrics <-
   mutate(model = "Knn",
          time = knn_time)
 
+
 # create dataframe with all models
 model_compare <- bind_rows(log_metrics,
                             tree_metrics,
@@ -626,13 +644,6 @@ model_compare <- bind_rows(log_metrics,
   mutate(time = str_sub(time, end = -13) %>% 
            as.double()
          )
-
-# create dataframe with all models
-model_compare <- bind_rows(log_metrics,
-                           tree_metrics,
-                           rf_metrics,
-                           xgb_metrics,
-                           knn_metrics) 
 
 # pivot wider to create barplot
   model_comp <- model_compare %>% 
