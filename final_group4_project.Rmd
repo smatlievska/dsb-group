@@ -168,6 +168,37 @@ card_fraud %>%
 
 -   Fraud seems to occur far more frequently during night time hours when people are asleep and more frequently on weekend days as these are generally the times during which people are paying less attention to their bank accounts. Furthermore, fraud is far more common in the first six months of the year than the last. It is unclear why.
 
+-   Next, we turn our attention to the numerical variables: what is the distribution of amounts of fraudulent and legitimate transactions? :
+
+```{r transaction-amounts}
+
+# some quick summary stats using summarize 
+# group by fraud versus legitimate 
+card_fraud %>% 
+  group_by(is_fraud) %>% 
+# calculate summary stats of amounts for each
+  summarize(mean_amount= mean(amt), 
+            median_amount = median(amt), 
+            minimum_amount = min(amt), 
+            maximum_amount = max(amt))
+
+
+# now plot histogram of fraudulent transaction amounts  
+card_fraud %>%
+# only fraudulent transactions
+  filter(is_fraud==1) %>% 
+# plot distribution - make bins look as good as possible 
+  ggplot(aes(x = amt)) +
+  geom_histogram(bins=50) +
+
+  labs(title = "Distribution of transactions amounts
+       \nof fraudulent transactions", 
+       x = "Transaction amount / $", y="")
+
+```
+
+-   We see that the distribution of fraudulent transactions has a mean of about \$500 and barely any amounts go above \$1000. This makes sense as fraudsters would want transactions to be worth it, but without attracting too much attention. Many tiny transactions or one very large transaction would get the attention of the victim more quickly. Contrarily, legitimate transactions obviously have a much wide range and lower mean.
+
 ***Strings to Factors***
 
 -   `category`, Category of Merchant
