@@ -88,17 +88,85 @@ card_fraud <- card_fraud %>%
 
 ## Exploratory Data Analysis (EDA)
 
-You have done some EDA and you can pool together your group's expertise in which variables to use as features. You can reuse your EDA from earlier, but we expect at least a few visualisations and/or tables to explore the dataset and identify any useful features.
+Let's explore the data set and understand some useful features of it.
 
-Group all variables by type and examine each variable class by class. The dataset has the following types of variables:
+-   First, let's understand how many transactions were actually fraud in this data set:
 
-1.  Strings
-2.  Geospatial Data
-3.  Dates
-4.  Date/Times
-5.  Numerical
+```{r how-much-fraud}
 
-Strings are usually not a useful format for classification problems. The strings should be converted to factors, dropped, or otherwise transformed.
+# group transactions by year 
+card_fraud %>% 
+  group_by(year) %>% 
+# count number of fraudulent and non- fraudulent transactions 
+  count(is_fraud) %>% 
+# calculate variable for frequency of fraud 
+  mutate(percentage = n/sum(n) *100) 
+
+```
+
+-   Approximately 0.6% of transactions were fraudulent in both 2019 and 2020.
+
+-   Next, examine date/time variables: when does fraud occur? Are there some weekdays, months or hours of the day when fraud occurs more frequently? :
+
+```{r fraud-happens-when}
+
+# plot bar graph to investigate fraud by day of the week 
+card_fraud %>% 
+  
+# filter only for fraudulent transactions
+  filter(is_fraud==1) %>% 
+  
+# count number of transactions of fraud by weekday 
+  group_by(wday) %>% 
+  count() %>% 
+  
+# plot bars for weekdays 
+  ggplot(aes(x = wday, y = n)) + 
+  geom_bar(stat="identity") +
+  
+# add some text to show count of transactions for each day 
+  geom_text(aes(label = n, y= n - 10), 
+            colour = "white", size = 4 , vjust = 2) +
+  labs(x='', y='', 
+       title = "Number of occurences of fraud by weekday")
+  
+
+# plot bar graph to investigate fraud by month of the year 
+card_fraud %>% 
+  
+# filter only for fraudulent transactions
+  filter(is_fraud==1) %>% 
+  
+# count number of transactions of fraud by month 
+  group_by(month_name) %>% 
+  count() %>% 
+  
+# plot bars for months 
+  ggplot(aes(x = month_name, y = n)) + 
+  geom_bar(stat="identity") +
+  
+# add some text to show count of transactions for each month 
+  geom_text(aes(label = n, y= n - 10), 
+            colour = "white", size = 4 , vjust = 2) +
+  labs(x='', y='', 
+       title = "Number of occurences of fraud by month")
+
+
+# make a table to investigate which hours of the day are most affected 
+card_fraud %>% 
+  
+# filter only for fraudulent transactions
+  filter(is_fraud==1) %>% 
+  
+# count number of transactions of fraud by hour of the day 
+  group_by(hour) %>% 
+  count() %>%
+# arrange from most fraud occurences to least 
+  arrange(desc(n))
+
+```
+
+-   Fraud seems to occur far more frequently during night time hours when people are asleep and more frequently on weekend days as these are generally the times during which people are paying less attention to their bank accounts. Furthermore, fraud is far more common in the first six months of the year than the last. It is unclear why.
 
 ***Strings to Factors***
 
