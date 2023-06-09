@@ -670,7 +670,8 @@ model_comp %>%
   )+
   theme_light()+
   theme(legend.position = "none")+
-  labs(y = "Mean area under ROC curve")
+  labs(y = "Mean area under ROC curve", 
+       title ="Which model performs best?")
 
 ```
 
@@ -678,7 +679,7 @@ From the graph above, the Random Forest and XGBoost models seem to be far superi
 
 ## Last_fit metrics 
 
-Since the Random Forest and XGBoost models seem to have outperformed the others, we will use these workflows to do a last_fit test
+Since the Random Forest and XGBoost models seem to have outperformed the others, we will use these workflows to do a last_fit test:
 
 ```{r last-fit}
 
@@ -714,39 +715,55 @@ xgb_res %>% collect_metrics(summarize = TRUE)
 
 ```
 
-From the tables, over fitting has clearly not taken place as the model fits the training and testing data equally well. This is excellent and also more true for the XGBoost model. We will choose this as the "best" model and move forward in analysis with only XGBoost
+From the tables, over fitting has clearly not taken place as the model fits the training and testing data equally well. This is excellent and also more true for the XGBoost model. We will choose this as the "best" model and move forward in analysis with only XGBoost.
 
 ## Get variable importance using `vip` package
 
-```{r}
+```{r variable-importance}
 
-library(vip)
-
+# use vip package 
+# extract the fit from the xgb workflow 
 last_fit_xgb %>% 
   pluck(".workflow", 1) %>%   
-  pull_workflow_fit() %>% 
+  extract_fit_parsnip() %>% 
+  
+# top 10 most important variables 
   vip(num_features = 10) +
-  theme_light()
+  theme_light() + 
+  labs(title = "Variable importance for XGBoost model fit")
 
 ```
+
+It would appear that transaction amount was by far the most important variable in predicting whether a transaction was fraudulent. We discovered this might be the case in our earlier EDA as legitimate transactions had a far greater spread and lower mean than fraudulent transactions.
 
 ## Plot Final Confusion matrix and ROC curve
 
-```{r}
-## Final Confusion Matrix
+```{r confusion-matrix}
+
+# Final Confusion Matrix for XGBoost model 
 
 last_fit_xgb %>%
+# collect preditions and plot confusion matrix 
   collect_predictions() %>% 
   conf_mat(is_fraud, .pred_class) %>% 
-  autoplot(type = "heatmap")
+  autoplot(type = "heatmap") +
+  
+# fix axis labels and title 
+  scale_x_discrete(labels= c("Fraudulent","Legitimate")) +
+  scale_y_discrete(labels= c("Legitimate","Fraudulent")) +
+  labs(title="Confusion matrix for XGBoost model")
 
 
-## Final ROC curve
+# Final ROC curve for XGBoost model
 last_fit_xgb %>% 
   collect_predictions() %>% 
   roc_curve(is_fraud, .pred_1) %>% 
-  autoplot()
+  autoplot() +
+  labs(title="ROC curve for XGBoost model")
+
 ```
+
+An excellent confusion matrix and a near perfect ROC curve. This is a very good model!
 
 ## Calculating the cost of fraud to the company
 
