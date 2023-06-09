@@ -640,7 +640,7 @@ model_compare <- bind_rows(log_metrics,
                            xgb_metrics,
                            knn_metrics
                       ) %>% 
-  # get rid of 'sec elapsed' and turn it into a number
+# get rid of 'sec elapsed' and turn it into a number
   mutate(time = str_sub(time, end = -13) %>% 
            as.double()
          )
@@ -650,10 +650,14 @@ model_compare <- bind_rows(log_metrics,
   select(model, .metric, mean, std_err) %>% 
   pivot_wider(names_from = .metric, values_from = c(mean, std_err)) 
 
-# show mean are under the curve (ROC-AUC) for every model
+# show mean area under the curve (ROC-AUC) for every model
 model_comp %>% 
   arrange(mean_roc_auc) %>% 
-  mutate(model = fct_reorder(model, mean_roc_auc)) %>% # order results
+  
+# order results with highest area bar on top 
+  mutate(model = fct_reorder(model, mean_roc_auc)) %>% 
+  
+# column chart with model name on y-axis, mean are under ROC curve on x-axis
   ggplot(aes(model, mean_roc_auc, fill=model)) +
   geom_col() +
   coord_flip() +
@@ -666,35 +670,51 @@ model_comp %>%
   )+
   theme_light()+
   theme(legend.position = "none")+
-  labs(y = NULL)
+  labs(y = "Mean area under ROC curve")
 
 ```
 
-## Which metric to use
+From the graph above, the Random Forest and XGBoost models seem to be far superior to the others in terms of sensitivity and specificity i.e. they predict far fewer false positive/negatives.
 
-This is a highly imbalanced data set, as roughly 99.5% of all transactions are ok, and it's only 0.5% of transactions that are fraudulent. A `naive` model, which classifies everything as ok and not-fraud, would have an accuracy of 99.5%, but what about the sensitivity, specificity, the AUC, etc?
+## Last_fit metrics 
 
-## `last_fit()`
+Since the Random Forest and XGBoost models seem to have outperformed the others, we will use these workflows to do a last_fit test
 
-```{r}
+```{r last-fit}
 
-## `last_fit()` on test set
+# last fit on rf workflow using data_split 
+last_fit_rf <- last_fit(rf_wflow, 
+                        split = data_split,
+                        
+# summarize important metrics 
+                        metrics = metric_set(
+                          accuracy, f_meas, kap, precision,
+                          recall, roc_auc, sens, spec))
 
-# - `last_fit()`  fits a model to the whole training data and evaluates it on the test set. 
-# - provide the workflow object of the best model as well as the data split object (not the training data). 
- 
+last_fit_rf %>% collect_metrics(summarize = TRUE)
+
+# Compare to training model
+rf_res %>% collect_metrics(summarize = TRUE)
+
+
+
+# last fit on xgb workflow using data_split 
 last_fit_xgb <- last_fit(xgb_wflow, 
                         split = data_split,
+                        
+# summarize important metrics 
                         metrics = metric_set(
                           accuracy, f_meas, kap, precision,
                           recall, roc_auc, sens, spec))
 
 last_fit_xgb %>% collect_metrics(summarize = TRUE)
 
-#Compare to training
+# Compare to training model
 xgb_res %>% collect_metrics(summarize = TRUE)
 
 ```
+
+From the tables, over fitting has clearly not taken place as the model fits the training and testing data equally well. This is excellent and also more true for the XGBoost model. We will choose this as the "best" model and move forward in analysis with only XGBoost
 
 ## Get variable importance using `vip` package
 
