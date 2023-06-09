@@ -269,7 +269,7 @@ card_fraud %>%
 
 -   Which category of merchant is most likely to experience fraudulent transactions? :
 
-```{r merchants-fraud}
+```{r merchants-fraud, fig.width=10, fig.height=8}
 
 card_fraud %>% 
 # filter for only fraud transactions
@@ -597,7 +597,7 @@ knn_time <- time_knn[[4]]
 
 ## Compare models
 
-```{r, compare_models}
+```{r, compare_models, fig.width=8, fig.height=6}
 
 # Model Comparison
 
@@ -783,7 +783,7 @@ xgb_preds <-
 xgb_preds %>% 
   conf_mat(truth = is_fraud, estimate = .pred_class)
 
-# select only transaction amunt and fraud predictions 
+# select only transaction amount and fraud predictions 
 cost <- xgb_preds %>%
   select(is_fraud,year, amt, pred = .pred_class) 
 
